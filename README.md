@@ -51,6 +51,8 @@ We curate a variety of resources to support your AI learning journey:
 - **Online Courses:**
   - [Coursera - Machine Learning by Andrew Ng](https://www.coursera.org/learn/machine-learning)
   - [edX - Artificial Intelligence by Columbia University](https://www.edx.org/course/artificial-intelligence-ai)
+  - https://github.com/karpathy/nn-zero-to-hero
+  - https://github.com/MLNLP-World/DeepLearning-MuLi-Notes
 
 - **Tutorials & Guides:**
   - [TensorFlow Tutorials](https://www.tensorflow.org/tutorials)
