@@ -53,3 +53,23 @@ You can install the required Python libraries using `pip`:
 ```bash
 pip install torch torchvision matplotlib numpy
 
+## Import
+import torch
+import os
+from torchvision import datasets, transforms
+import matplotlib.pyplot as plt
+from torch import nn
+from torch import optim
+import numpy as np
+from time import time
+
+explanation:
+
+torch: Core PyTorch library for tensor computations and neural network operations.
+os: Interacts with the operating system, handling file paths.
+torchvision.datasets & transforms: Utilities for handling image datasets and applying transformations.
+matplotlib.pyplot: For plotting and visualizing data.
+torch.nn: Provides neural network layers and loss functions.
+torch.optim: Offers optimization algorithms for training.
+numpy: Facilitates numerical operations on arrays.
+time: Measures the duration of training.
