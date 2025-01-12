@@ -434,3 +434,91 @@ Number Of Images Tested = 10000
 Model Accuracy = 0.98
 ```
 **This indicates that the model achieved an accuracy of 98% on the validation dataset, demonstrating effective learning and generalization.**
+
+
+
+## Optimization(DIY!)
+
+**Option 1 Adding Hidden Layers**:
+You can enhance the model's expressive power by adding more hidden layers or increasing the number of neurons in each layer. For example:
+
+```bash
+model = nn.Sequential(
+    nn.Linear(input_size, hidden_sizes[0]),
+    nn.ReLU(),
+    nn.Linear(hidden_sizes[0], hidden_sizes[1]),
+    nn.ReLU(),
+    nn.Linear(hidden_sizes[1], hidden_sizes[2]),
+    nn.ReLU(),
+    nn.Linear(hidden_sizes[2], output_size),
+    nn.LogSoftmax(dim=1)
+)
+```
+
+**Option 2 Using Other Activation Functions**:
+In addition to ReLU, you can experiment with other activation functions such as LeakyReLU, ELU, Tanh, etc., to improve the model's performance and training stability.
+
+```bash
+model = nn.Sequential(
+    nn.Linear(input_size, hidden_sizes[0]),
+    nn.LeakyReLU(),
+    nn.Linear(hidden_sizes[0], hidden_sizes[1]),
+    nn.LeakyReLU(),
+    nn.Linear(hidden_sizes[1], output_size),
+    nn.LogSoftmax(dim=1)
+)
+```
+
+**Option 3 Introducing Regularization**:
+Dropout: Add Dropout layers between hidden layers to prevent overfitting.
+
+```bash
+model = nn.Sequential(
+    nn.Linear(input_size, hidden_sizes[0]),
+    nn.ReLU(),
+    nn.Dropout(0.5),
+    nn.Linear(hidden_sizes[0], hidden_sizes[1]),
+    nn.ReLU(),
+    nn.Dropout(0.5),
+    nn.Linear(hidden_sizes[1], output_size),
+    nn.LogSoftmax(dim=1)
+)
+
+```
+
+**Option 4 Batch Normalization**:
+Add Batch Normalization layers after activation functions to accelerate the training process and improve the model's performance.
+
+```bash
+model = nn.Sequential(
+    nn.Linear(input_size, hidden_sizes[0]),
+    nn.BatchNorm1d(hidden_sizes[0]),
+    nn.ReLU(),
+    nn.Linear(hidden_sizes[0], hidden_sizes[1]),
+    nn.BatchNorm1d(hidden_sizes[1]),
+    nn.ReLU(),
+    nn.Linear(hidden_sizes[1], output_size),
+    nn.LogSoftmax(dim=1)
+)
+
+```
+
+**Option 5 Learning Rate Scheduling**:
+Use learning rate schedulers (such as StepLR, ReduceLROnPlateau) to dynamically adjust the learning rate, thereby improving training effectiveness.
+```bash
+from torch.optim.lr_scheduler import StepLR
+
+scheduler = StepLR(optimizer, step_size=10, gamma=0.1)
+
+for epoch in range(epochs):
+    # Training code
+    ...
+    scheduler.step()
+```
+
+**Option 5 Learning Rate Scheduling**:
+Experiment with different optimizers like SGD with Momentum, RMSprop, etc., to compare the impact of various optimization strategies on model training.
+```bash
+optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
+
+```
