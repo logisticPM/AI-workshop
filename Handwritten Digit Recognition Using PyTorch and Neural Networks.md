@@ -516,9 +516,3 @@ for epoch in range(epochs):
     scheduler.step()
 ```
 
-**Option 5 Learning Rate Scheduling**:
-Experiment with different optimizers like SGD with Momentum, RMSprop, etc., to compare the impact of various optimization strategies on model training.
-```bash
-optimizer = optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9)
-
-```
