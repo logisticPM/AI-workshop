@@ -1,5 +1,5 @@
-# GPT Language Model with PyTorch
-
+# GPT Language Model with PyTorch 
+https://colab.research.google.com/drive/1JMLa53HDuA-i7ZBmqV7ZnA3c_fvtXnx-?usp=sharing#scrollTo=2Num7sX9CKOH
 This repository provides a comprehensive guide to building, training, and generating text with a GPT-style language model implemented from scratch using PyTorch. Whether you're new to transformers or looking to deepen your understanding of self-attention mechanisms, this project offers hands-on experience with state-of-the-art techniques in natural language processing.
 
 ![image](https://github.com/user-attachments/assets/0c8e4914-0217-47fa-bbb8-bc8acfffaf31)
