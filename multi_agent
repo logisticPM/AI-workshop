@@ -1,0 +1,189 @@
+# agent_colab_multi.py
+"""
+Colab Multi-Agent Deep Research Agent
+- Supervisor/Researcher multi-agent collaboration
+- Google search + web scraping + LLM writing
+- Structured Markdown report output
+"""
+
+import os
+from openai import OpenAI
+from googlesearch import search
+import requests
+from bs4 import BeautifulSoup
+import asyncio
+import nest_asyncio
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+import sys
+import subprocess
+from getpass import getpass
+
+# API Key input with hidden input (no Colab check)
+if not os.getenv('OPENROUTER_API_KEY') or os.getenv('OPENROUTER_API_KEY') == 'sk-...':
+    print("Please enter your OpenRouter API Key (input will be hidden)")
+    key = getpass("OpenRouter API Key (sk-...): ")
+    os.environ['OPENROUTER_API_KEY'] = key
+
+OPENROUTER_API_KEY = os.environ['OPENROUTER_API_KEY']
+OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1'
+MODEL = "anthropic/claude-sonnet-4"
+
+# Global cache for weather parameters
+weather_location = {}
+
+# Auto-install dependencies (only available in Colab/Jupyter environments)
+def ensure_package(pkg):
+    try:
+        __import__(pkg)
+    except ImportError:
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', pkg])
+
+for pkg in ['mcp', 'nest_asyncio', 'openai', 'googlesearch-python', 'beautifulsoup4', 'requests', 'httpx']:
+    ensure_package(pkg)
+
+nest_asyncio.apply()
+
+def google_search(query, num_results=3):
+    return list(search(query, num_results=num_results))
+# Example webpage HTML content:
+html_example = """
+<html>
+<head><title>Example Page</title></head>
+<body>
+   <h1>Article Title</h1>
+   <p>This is the first paragraph content, containing important information.</p>
+   <div>This is div content, which will not be extracted</div>
+   <p>This is the second paragraph content, a paragraph <a href="#">containing a link</a>.</p>
+   <ul>
+       <li>List item 1</li>
+       <li>List item 2</li>
+   </ul>
+   <p>This is the last paragraph content.</p>
+</body>
+</html>
+"""
+def fetch_web_content(url):
+    try:
+        resp = requests.get(url, timeout=10)
+        soup = BeautifulSoup(resp.text, 'html.parser')
+        texts = [p.get_text() for p in soup.find_all('p')]
+        return '\n'.join(texts)
+    except Exception as e:
+        return f"[Fetch failed: {e}]"
+
+# Support passing server path via argument
+WEATHER_SERVER_PATH = sys.argv[1] if len(sys.argv) > 1 else "weather_mcp_server.py"
+
+# New: Weather MCP call
+async def call_weather_mcp(tool_name, tool_args):
+    server_params = StdioServerParameters(
+        command="python",
+        args=[WEATHER_SERVER_PATH],
+        env=None
+    )
+    try:
+        async with stdio_client(server_params) as (stdio, write):
+            async with ClientSession(stdio, write) as session:
+                await session.initialize()
+                result = await session.call_tool(tool_name, tool_args)
+                return result.content
+    except Exception as e:
+        return f"[MCP call exception]: {e}"
+
+def supervisor_plan(topic):
+    # Use LLM to break down the topic into section titles
+    client = OpenAI(base_url=OPENROUTER_BASE_URL, api_key=OPENROUTER_API_KEY)
+    prompt = f"Please break down the following research topic into 3-5 section titles. Output a list of section titles.\n\nTopic: {topic}\n\nFormat:\n1. ...\n2. ...\n3. ..."
+    completion = client.chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=256,
+        temperature=0.2,
+    )
+    lines = [line.strip(" 1234567890.、") for line in completion.choices[0].message.content.splitlines() if line.strip()]
+    return [line for line in lines if line]
+
+def researcher_section(section_title, topic):
+    global weather_location
+    weather_keywords = ["weather", "climate", "forecast", "temperature", "precipitation", "wind", "humidity"]
+    if any(kw in section_title.lower() for kw in weather_keywords):
+        print(f"Detected weather-related section [{section_title}]. Available tools: 1) get_alerts (state) 2) get_forecast (latitude/longitude)")
+        if not weather_location.get("tool"):
+            tool = input("Please select the tool to use (1=alerts, 2=forecast): ").strip()
+            if tool == "1":
+                state = input("Enter US state abbreviation (e.g. CA, NY): ").strip().upper()
+                if state:
+                    weather_location["tool"] = "get_alerts"
+                    weather_location["args"] = {"state": state}
+            elif tool == "2":
+                lat = input("Enter latitude (e.g. 37.77): ").strip()
+                lon = input("Enter longitude (e.g. -122.42): ").strip()
+                try:
+                    lat_f = float(lat)
+                    lon_f = float(lon)
+                    weather_location["tool"] = "get_forecast"
+                    weather_location["args"] = {"latitude": lat_f, "longitude": lon_f}
+                except Exception as e:
+                    return f"[Invalid latitude/longitude: {e}]"
+        if weather_location.get("tool") and weather_location.get("args"):
+            try:
+                mcp_result = asyncio.get_event_loop().run_until_complete(
+                    call_weather_mcp(weather_location["tool"], weather_location["args"]))
+                
+                # Process weather data with LLM based on section title
+                client = OpenAI(base_url=OPENROUTER_BASE_URL, api_key=OPENROUTER_API_KEY)
+                prompt = f"""Based on the following weather data, write a detailed analysis for the section '{section_title}'. 
+                Focus on aspects relevant to this specific section. Format the response in Markdown with appropriate headers and bullet points where needed.
+
+                Weather Data:
+                {mcp_result}
+
+                Write a well-organized section that specifically addresses {section_title}. Include relevant data points and insights."""
+
+                completion = client.chat.completions.create(
+                    model=MODEL,
+                    messages=[{"role": "user", "content": prompt}],
+                    max_tokens=512,
+                    temperature=0.2,
+                )
+                return completion.choices[0].message.content
+
+            except Exception as e:
+                return f"[Weather MCP call error: {e}]"
+    # Otherwise, use web search + LLM writing
+    search_query = f"{topic} {section_title}"
+    links = google_search(search_query)
+    docs = [fetch_web_content(url) for url in links]
+    context = '\n---\n'.join(docs)
+    client = OpenAI(base_url=OPENROUTER_BASE_URL, api_key=OPENROUTER_API_KEY)
+    prompt = f"Based on the following web content, write a structured Markdown section for '{section_title}'. Ensure information is accurate and well-organized.\n\nWeb content:\n{context}\n"
+    completion = client.chat.completions.create(
+        model=MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=512,
+        temperature=0.2,
+    )
+    return completion.choices[0].message.content
+
+def supervisor_assemble(topic, sections, section_contents):
+    # Assemble all sections into a complete report
+    report = f"# {topic}\n\n"
+    for title, content in zip(sections, section_contents):
+        report += f"## {title}\n{content}\n\n"
+    return report
+
+# Main process uses asyncio.run for scheduling
+if __name__ == "__main__":
+    topic = input("Please enter the research topic: ").strip()
+    print("Supervisor: Planning report structure...")
+    sections = supervisor_plan(topic)
+    print("Supervisor: Planned sections:", sections)
+    section_contents = []
+    for sec in sections:
+        print(f"Researcher: Writing section [{sec}] ...")
+        content = researcher_section(sec, topic)
+        section_contents.append(content)
+    report = supervisor_assemble(topic, sections, section_contents)
+    print("\n=== Research Report ===\n")
+    print(report) 
